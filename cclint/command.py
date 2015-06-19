@@ -80,17 +80,38 @@ def parse_arguments():
 
     Returns:
         A tuple of two values. The first value is a dict of options that used
-        by cclint itself, and second value is a list of filenames passed to
-        the command line executable.
+        by cclint itself, and the second value is a list of filenames passed
+        to the command line client.
     """
-    args = sys.argv[1:]
+
+    # The long options of cclint that will be passed to `getopt()`.
+    CCLINT_LONG_OPTIONS = ['excludedir=', 'expanddir=']
+
+    # Creates a list of cclint's option names.
+    cclint_options = list()
+    for signature in CCLINT_LONG_OPTIONS:
+        if signature.endswith('='):
+            cclint_options.append(signature[:-1])
+        else:
+            cclint_options.append(signature)
+
+    # Separates cpplint's and cclint's arguments.
+    cclint_args = list()
+    cpplint_args = list()
+    for arg in sys.argv[1:]:
+        if arg.startswith('--'):
+            option_name = arg.split('=')[0][2:]
+            if option_name in cclint_options:
+                cclint_args.append(arg)
+                continue
+        cpplint_args.append(arg)
+
+    # Parses cclint's arguments.
     try:
-        opts, filenames = getopt.getopt(args, '',
-                                        ['excludedir=', 'expanddir='])
+        opts, remainer = getopt.getopt(cclint_args, '', CCLINT_LONG_OPTIONS)
     except getopt.GetoptError:
         cpplint.PrintUsage('Invalid arguments.')
 
-    args = []
     options = {'excludedirs': set(), 'expanddir': 'no'}
     for (opt, val) in opts:
         if opt == '--expanddir':
@@ -102,14 +123,11 @@ def parse_arguments():
             for dirname in glob.iglob(val):
                 if os.path.isdir(dirname):
                     options['excludedirs'].add(os.path.relpath(dirname))
-        else:
-            args.append(opt)
-            if val: args.append(val)
-    args.extend(filenames)
 
-    # Filters passed filenames within the exclude directories.
+    # Parses cpplint's arguments and filters passed filenames within the
+    # exclude directories.
     filenames = list()
-    for filename in cpplint.ParseArguments(args):
+    for filename in cpplint.ParseArguments(cpplint_args):
         if (os.path.isdir(filename) and \
             os.path.relpath(filename) in options['excludedirs']) or \
            (os.path.isfile(filename) and \
