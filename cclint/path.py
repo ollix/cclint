@@ -33,7 +33,24 @@ import os
 import cpplint
 
 
-def expand_directory(dirname, filenames=None, recursive=False):
+def expand_directory(dirname, filenames=None, recursive=False,
+                     excludedirs=None):
+    """Searches files with matched extensions within a directory.
+
+    Args:
+        dirname: The directory to search for.
+        filenames: The list of filenames to return. This variable is used when
+            using this function as a recursive function. This function enters
+            recursive mode when the `recursive` parameter is `True`.
+        recursive: Whether to search files within subdirectories recursively.
+        excludedirs: A list of directories to exclude from searching.
+
+    Returns:
+        A list of matched filenames.
+    """
+    if excludedirs is not None and dirname in excludedirs:
+        return list()
+
     if filenames is None:
         filenames = list()
 
@@ -42,7 +59,7 @@ def expand_directory(dirname, filenames=None, recursive=False):
 
         if os.path.isdir(filename):
             if recursive:
-                expand_directory(filename, filenames, True)
+                expand_directory(filename, filenames, True, excludedirs)
         elif os.path.isfile(filename) and \
            os.path.splitext(item)[1][1:] in cpplint._valid_extensions:
             filenames.append(filename)

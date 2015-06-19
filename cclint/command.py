@@ -28,9 +28,18 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""The cclint command line client.
+
+This script enhances cpplint's capabilities by adding some additional features.
+It serves as a superset of cpplint and it does not change any default behavior
+of cpplint though it does change the output in a much more readable manner.
+Additional features provided by cclint can be accessed through added flags.
+"""
+
 import codecs
 import exceptions
 import getopt
+import glob
 import os
 import sys
 import time
@@ -47,6 +56,12 @@ _CCLINT_USAGE = """
   ---------------------------------------------------------------------------
   Flags added by cclint:
 
+    excludedir=dir
+      The directory to prevent all of its content files from processing. This
+      flag can be specified multiple times to have more than one exclude
+      directories. It is especially useful when combined with the
+      '--expanddie=recursive' option.
+
     expanddir=no|yes|recursive
       Decide how to deal with specified directory arguments. By default the
       value is 'no' which is cpplint's default behavior. If 'yes' is provided,
@@ -59,28 +74,56 @@ _CCLINT_SYNTAX = "               [--expanddir=no|yes|recursive]"
 # Remembers the current `sys.stderr` so it can always be restored.
 _SYS_STDERR = sys.stderr
 
+
 def parse_arguments():
+    """Parses command line arguments.
+
+    Returns:
+        A tuple of two values. The first value is a dict of options that used
+        by cclint itself, and second value is a list of filenames passed to
+        the command line executable.
+    """
     args = sys.argv[1:]
     try:
-        opts, filenames = getopt.getopt(args, '', ['expanddir='])
+        opts, filenames = getopt.getopt(args, '',
+                                        ['excludedir=', 'expanddir='])
     except getopt.GetoptError:
         cpplint.PrintUsage('Invalid arguments.')
 
     args = []
-    options = {'expanddir': 'no'}
+    options = {'excludedirs': set(), 'expanddir': 'no'}
     for (opt, val) in opts:
         if opt == '--expanddir':
             if val not in ('no', 'yes', 'recursive'):
                 cpplint.PrintUsage('The only allowed expanddir formats are '
                                    'no, yes and recursive')
             options['expanddir'] = val
+        elif opt == '--excludedir':
+            for dirname in glob.iglob(val):
+                if os.path.isdir(dirname):
+                    options['excludedirs'].add(os.path.relpath(dirname))
         else:
             args.append(opt)
             if val: args.append(val)
     args.extend(filenames)
-    return options, cpplint.ParseArguments(args)
+
+    # Filters passed filenames within the exclude directories.
+    filenames = list()
+    for filename in cpplint.ParseArguments(args):
+        if (os.path.isdir(filename) and \
+            os.path.relpath(filename) in options['excludedirs']) or \
+           (os.path.isfile(filename) and \
+            os.path.dirname(filename) in options['excludedirs']):
+            continue
+        filenames.append(filename)
+
+    return options, filenames
 
 def execute_from_command_line():
+    """Executes the cpplint client with added features.
+
+    This function is the entry point of the cclint client.
+    """
     start_time = time.time()
     update_cpplint_usage()
     colorama.init()
@@ -97,8 +140,11 @@ def execute_from_command_line():
             if os.path.isfile(filename):
                 filenames.append(filename)
             elif os.path.isdir(filename):
-                filenames.extend(expand_directory(filename,
-                                                  recursive=recursive))
+                expanded_filenames = expand_directory(
+                    filename,
+                    recursive=recursive,
+                    excludedirs=options['excludedirs'])
+                filenames.extend(expanded_filenames)
 
     print(colorama.Fore.CYAN + colorama.Style.BRIGHT +
           '\n=== CCLINT ===' +
@@ -133,7 +179,7 @@ def execute_from_command_line():
     sys.exit(total_error_counts > 0)
 
 def update_cpplint_usage():
-    """Update the usage text defined cpplint"""
+    """Update the usage text defined in cpplint."""
 
     cpplint_usage = cpplint._USAGE
     usage_lines = cpplint_usage.split('\n', 4)
