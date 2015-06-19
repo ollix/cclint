@@ -39,15 +39,66 @@ import colorama
 import cpplint
 
 import cclint.file_stream
+import cclint.path
 
 
+# The additional usage text that will be added to the display usage text.
+_CCLINT_USAGE = """
+  ---------------------------------------------------------------------------
+  Flags added by cclint:
+
+    expanddir=no|yes|recursive
+      Decide how to deal with specified directory arguments. By default the
+      value is 'no' which is cpplint's default behavior. If 'yes' is provided,
+      then it replaces all directory paths with their content files with
+      matched 'extensions'. If 'recursive' is provided, then subdirectories
+      are also expanded recursively as well.
+"""
+# The syntax that will be added to the displayed usage text.
+_CCLINT_SYNTAX = "               [--expanddir=no|yes|recursive]"
+# Remembers the current `sys.stderr` so it can always be restored.
 _SYS_STDERR = sys.stderr
+
+def parse_arguments():
+    args = sys.argv[1:]
+    try:
+        opts, filenames = getopt.getopt(args, '', ['expanddir='])
+    except getopt.GetoptError:
+        cpplint.PrintUsage('Invalid arguments.')
+
+    args = []
+    options = {'expanddir': 'no'}
+    for (opt, val) in opts:
+        if opt == '--expanddir':
+            if val not in ('no', 'yes', 'recursive'):
+                cpplint.PrintUsage('The only allowed expanddir formats are '
+                                   'no, yes and recursive')
+            options['expanddir'] = val
+        else:
+            args.append(opt)
+            if val: args.append(val)
+    args.extend(filenames)
+    return options, cpplint.ParseArguments(args)
 
 def execute_from_command_line():
     start_time = time.time()
     update_cpplint_usage()
     colorama.init()
-    filenames = cpplint.ParseArguments(sys.argv[1:])
+    options, cpplint_filenames = parse_arguments()
+
+    if options['expanddir'] == 'no':
+        filenames = cpplint_filenames
+    else:
+        filenames = list()
+        recursive = (options['expanddir'] == 'recursive')
+        expand_directory = cclint.path.expand_directory
+
+        for filename in cpplint_filenames:
+            if os.path.isfile(filename):
+                filenames.append(filename)
+            elif os.path.isdir(filename):
+                filenames.extend(expand_directory(filename,
+                                                  recursive=recursive))
 
     print(colorama.Fore.CYAN + colorama.Style.BRIGHT +
           '\n=== CCLINT ===' +
@@ -83,7 +134,12 @@ def execute_from_command_line():
 
 def update_cpplint_usage():
     """Update the usage text defined cpplint"""
-    usage = cpplint._USAGE
-    usage = usage.replace('cpplint.py', 'cclint')
-    usage = usage.replace('                   ', '               ')
-    cpplint._USAGE = usage
+
+    cpplint_usage = cpplint._USAGE
+    usage_lines = cpplint_usage.split('\n', 4)
+    usage_lines.insert(4, _CCLINT_SYNTAX)
+    cpplint_usage = '\n'.join(usage_lines)
+    cpplint_usage = cpplint_usage.replace('cpplint.py', 'cclint')
+    cpplint_usage = cpplint_usage.replace('                   ',
+                                          '               ')
+    cpplint._USAGE = cpplint_usage + _CCLINT_USAGE

@@ -28,4 +28,23 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-__all__ = ['command', 'file_stream', 'path']
+import os
+
+import cpplint
+
+
+def expand_directory(dirname, filenames=None, recursive=False):
+    if filenames is None:
+        filenames = list()
+
+    for item in os.listdir(dirname):
+        filename = os.path.join(dirname, item)
+
+        if os.path.isdir(filename):
+            if recursive:
+                expand_directory(filename, filenames, True)
+        elif os.path.isfile(filename) and \
+           os.path.splitext(item)[1][1:] in cpplint._valid_extensions:
+            filenames.append(filename)
+
+    return filenames

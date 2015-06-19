@@ -14,6 +14,12 @@ __cclint__ preserves all __cpplint__'s capabilities with a few extra features:
 
     Example: ![pretty output](examples/screenshot.png)
 
+* **Easier to include files within directories.**
+
+    _cclint_ adds a new `expanddir` flag that allows to add files with matched
+    extensions within specified directories. It also includes an option to add
+    files within subdirectories recursively.
+
 ##Requirements
 
 * Python 2.7 or later
