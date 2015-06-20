@@ -36,21 +36,22 @@ of cpplint though it does change the output in a much more readable manner.
 Additional features provided by cclint can be accessed through added flags.
 """
 
+from __future__ import print_function
 import codecs
-import exceptions
 import getopt
 import glob
 import os
 import sys
 import time
 
-import colorama
 import cpplint
 
-import cclint.file_stream
-import cclint.path
+from cclint import file_stream
+from cclint import utility
 
 
+# The long options of cclint that will be passed to `getopt()`.
+_CCLINT_GETOPT_LONG_OPTIONS = ['excludedir=', 'expanddir=']
 # The additional usage text that will be added to the display usage text.
 _CCLINT_USAGE = """
   ---------------------------------------------------------------------------
@@ -71,8 +72,6 @@ _CCLINT_USAGE = """
 """
 # The syntax that will be added to the displayed usage text.
 _CCLINT_SYNTAX = "               [--expanddir=no|yes|recursive]"
-# Remembers the current `sys.stderr` so it can always be restored.
-_SYS_STDERR = sys.stderr
 
 
 def parse_arguments():
@@ -84,12 +83,9 @@ def parse_arguments():
         to the command line client.
     """
 
-    # The long options of cclint that will be passed to `getopt()`.
-    CCLINT_LONG_OPTIONS = ['excludedir=', 'expanddir=']
-
     # Creates a list of cclint's option names.
     cclint_options = list()
-    for signature in CCLINT_LONG_OPTIONS:
+    for signature in _CCLINT_GETOPT_LONG_OPTIONS:
         if signature.endswith('='):
             cclint_options.append(signature[:-1])
         else:
@@ -107,22 +103,7 @@ def parse_arguments():
         cpplint_args.append(arg)
 
     # Parses cclint's arguments.
-    try:
-        opts, remainer = getopt.getopt(cclint_args, '', CCLINT_LONG_OPTIONS)
-    except getopt.GetoptError:
-        cpplint.PrintUsage('Invalid arguments.')
-
-    options = {'excludedirs': set(), 'expanddir': 'no'}
-    for (opt, val) in opts:
-        if opt == '--expanddir':
-            if val not in ('no', 'yes', 'recursive'):
-                cpplint.PrintUsage('The only allowed expanddir formats are '
-                                   'no, yes and recursive')
-            options['expanddir'] = val
-        elif opt == '--excludedir':
-            for dirname in glob.iglob(val):
-                if os.path.isdir(dirname):
-                    options['excludedirs'].add(os.path.relpath(dirname))
+    options = parse_cclint_arguments(cclint_args)
 
     # Parses cpplint's arguments and filters passed filenames within the
     # exclude directories.
@@ -137,6 +118,33 @@ def parse_arguments():
 
     return options, filenames
 
+def parse_cclint_arguments(args):
+    """Parses arguments defined by cclint.
+
+    Args:
+        args: a list of argument strings to be parsed for cclint.
+
+    Returns:
+        A dict of parsed cclint arguments.
+    """
+    try:
+        opts = getopt.getopt(args, '', _CCLINT_GETOPT_LONG_OPTIONS)[0]
+    except getopt.GetoptError:
+        cpplint.PrintUsage('Invalid arguments.')
+
+    options = {'excludedirs': set(), 'expanddir': 'no'}
+    for (opt, val) in opts:
+        if opt == '--expanddir':
+            if val not in ('no', 'yes', 'recursive'):
+                cpplint.PrintUsage('The only allowed expanddir formats are '
+                                   'no, yes and recursive')
+            options['expanddir'] = val
+        elif opt == '--excludedir':
+            for dirname in glob.iglob(val):
+                if os.path.isdir(dirname):
+                    options['excludedirs'].add(os.path.relpath(dirname))
+    return options
+
 def execute_from_command_line():
     """Executes the cpplint client with added features.
 
@@ -144,15 +152,15 @@ def execute_from_command_line():
     """
     start_time = time.time()
     update_cpplint_usage()
-    colorama.init()
     options, cpplint_filenames = parse_arguments()
 
+    # Determines the list of filenames to process.
     if options['expanddir'] == 'no':
         filenames = cpplint_filenames
     else:
         filenames = list()
         recursive = (options['expanddir'] == 'recursive')
-        expand_directory = cclint.path.expand_directory
+        expand_directory = utility.expand_directory
 
         for filename in cpplint_filenames:
             if os.path.isfile(filename):
@@ -164,41 +172,46 @@ def execute_from_command_line():
                     excludedirs=options['excludedirs'])
                 filenames.extend(expanded_filenames)
 
-    print(colorama.Fore.CYAN + colorama.Style.BRIGHT +
+    # Prints the cclint's header message.
+    print(utility.get_ansi_code('FOREGROUND_CYAN') +
+          utility.get_ansi_code('STYLE_BRIGHT') +
           '\n=== CCLINT ===' +
-          colorama.Fore.RESET + colorama.Style.RESET_ALL)
+          utility.get_ansi_code('FOREGROUND_RESET') +
+          utility.get_ansi_code('STYLE_RESET_ALL'))
 
-    # Initializes the stream for intercepting cpplint's messages and displaying
-    # which with customized style.
-    stream = cclint.file_stream.FileStream(sys.stderr,
-                                           codecs.getreader('utf8'),
-                                           codecs.getwriter('utf8'),
-                                           'replace')
-    stream.Init()
-    cpplint_state = cpplint._CppLintState()
+    # Initializes the stream for intercepting and formatting cpplint's output.
+    stream = file_stream.FileStream(sys.stderr,
+                                    codecs.getreader('utf8'),
+                                    codecs.getwriter('utf8'),
+                                    'replace')
+    cpplint_state = cpplint._CppLintState()  # pylint: disable=protected-access
     cpplint_state.ResetErrorCounts()
     for filename in filenames:
-        stream.PrepareForProcessingFile(filename)
+        stream.begin(filename)
         cpplint.ProcessFile(filename, cpplint_state.verbose_level)
-    sys.stderr = _SYS_STDERR
+        stream.end()
 
     # Prints the succeeded messages.
-    print(colorama.Fore.GREEN + colorama.Style.BRIGHT +
-          '\n** LINT SUCCEEDED **' + colorama.Style.RESET_ALL +
-          colorama.Fore.WHITE + colorama.Style.DIM +
+    print(utility.get_ansi_code('FOREGROUND_GREEN') +
+          utility.get_ansi_code('STYLE_BRIGHT') +
+          '\n** LINT SUCCEEDED **' + utility.get_ansi_code('STYLE_RESET_ALL') +
+          utility.get_ansi_code('FOREGROUND_WHITE') +
+          utility.get_ansi_code('STYLE_DIM') +
           ' ({0:.3f} seconds)\n\n'.format(time.time() - start_time) +
-          colorama.Fore.RESET + colorama.Style.RESET_ALL)
-    # Shows how many errors found.
+          utility.get_ansi_code('FOREGROUND_RESET') +
+          utility.get_ansi_code('STYLE_RESET_ALL'))
+    # Shows how many errors are found.
     total_error_counts = stream.total_error_counts
     if total_error_counts:
-        print(colorama.Fore.RED +
+        print(utility.get_ansi_code('FOREGROUND_RED') +
               'Total errors found: {0:d}'.format(total_error_counts))
-    print(colorama.Fore.RESET + 'Done.\n')
+    print(utility.get_ansi_code('FOREGROUND_RESET') + 'Done.\n')
     sys.exit(total_error_counts > 0)
 
 def update_cpplint_usage():
     """Update the usage text defined in cpplint."""
 
+    # pylint: disable=protected-access
     cpplint_usage = cpplint._USAGE
     usage_lines = cpplint_usage.split('\n', 4)
     usage_lines.insert(4, _CCLINT_SYNTAX)

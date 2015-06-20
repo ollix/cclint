@@ -28,4 +28,11 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-__all__ = ['command', 'file_stream', 'path']
+"""The cclint package."""
+
+from cclint import command
+from cclint import file_stream
+from cclint import utility
+
+
+__all__ = ['command', 'file_stream', 'utility']

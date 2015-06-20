@@ -54,7 +54,7 @@ setup(
     author='Olli Wang',
     author_email='olliwang@ollix.com',
     url='https://github.com/olliwang/cclint',
-    license='GPLv3',
+    license='BSD',
     packages=packages,
     scripts=['cclint/bin/cclint'],
     classifiers=[
