@@ -53,7 +53,7 @@ setup(
     description="An enhanced version of the Goggle's cpplint tool",
     author='Olli Wang',
     author_email='olliwang@ollix.com',
-    url='https://github.com/olliwang/cclint',
+    url='https://github.com/ollix/cclint',
     license='BSD',
     packages=packages,
     scripts=['cclint/bin/cclint'],

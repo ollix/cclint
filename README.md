@@ -26,9 +26,16 @@ __cclint__ preserves all __cpplint__'s capabilities with a few extra features:
 
 ## Installation
 
-__cclint__ can be installed throguh __pip__ via
+__cclint__ can be installed through __pip__ via
+
+```base
+pip install cclint
+```
+
+Or you can install the development version via
+
 ```bash
-pip install git+git://github.com/olliwang/cclint.git
+pip install git+git://github.com/ollix/cclint.git
 ```
 
 ## Usage
