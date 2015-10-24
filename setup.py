@@ -56,6 +56,10 @@ setup(
     url='https://github.com/ollix/cclint',
     license='BSD',
     packages=packages,
+    install_requires=[
+        'colorama',
+        'cpplint'
+    ],
     scripts=['cclint/bin/cclint'],
     classifiers=[
         'Development Status :: 4 - Beta',
