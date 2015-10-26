@@ -61,6 +61,11 @@ setup(
         'cpplint'
     ],
     scripts=['cclint/bin/cclint'],
+    entry_points={
+        'console_scripts': [
+            'cclint = cclint:command.execute_from_command_line',
+        ],
+    },
     classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Console',
