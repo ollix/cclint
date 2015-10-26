@@ -32,6 +32,7 @@
 
 from __future__ import print_function
 import codecs
+import platform
 import sys
 
 from cclint import utility
@@ -76,6 +77,14 @@ class FileStream(codecs.StreamReaderWriter):
         self.previous_file_has_error = False
         self.processed_files = 0
         self.total_error_counts = 0
+        if platform.system() == 'Windows' or platform.system().lower().startswith('cygwin'):
+            self.ok = '+'
+            self.warning = '!'
+            self.error = 'X'
+        else:
+            self.ok = '✓'
+            self.warning = '⚠'
+            self.error = '✗'
 
     def begin(self, filename):
         """Prepares for file processing.
@@ -113,7 +122,7 @@ class FileStream(codecs.StreamReaderWriter):
             message: an optional string that will be printed on the next line
                 of the filename.
         """
-        current_file_has_error = (state_symbol == '✗')
+        current_file_has_error = (state_symbol == self.error)
         if self.processed_files == 0 or \
            (self.previous_file_has_error and not current_file_has_error):
             print('')
@@ -142,7 +151,7 @@ class FileStream(codecs.StreamReaderWriter):
         # Exits when done processing a file.
         if output.startswith('Done'):
             if self.error_counts == 0:
-                self.print_filename(line_indent, '✓',
+                self.print_filename(line_indent, self.ok,
                                     utility.get_ansi_code('FOREGROUND_GREEN'))
             sys.stderr = self
             return
@@ -152,7 +161,7 @@ class FileStream(codecs.StreamReaderWriter):
             if output.startswith(beginning_match):
                 message = output.split(seprator, 1)[1].strip()
                 message = message[0].lower() + message[1:]
-                self.print_filename(line_indent, '⚠',
+                self.print_filename(line_indent, self.warning,
                                     utility.get_ansi_code('FOREGROUND_YELLOW'),
                                     message)
                 sys.stderr = self
@@ -165,7 +174,7 @@ class FileStream(codecs.StreamReaderWriter):
         if self.error_counts == 1:
             if self.processed_files > 0:
                 print('')
-            self.print_filename(line_indent, '✗',
+            self.print_filename(line_indent, self.error,
                                 utility.get_ansi_code('FOREGROUND_RED'))
         line_number, description = output.split(':', 2)[1:]
         line_indent += 2
