@@ -49,7 +49,7 @@ for dirpath, dirnames, filenames in os.walk(cclint_dir):
 
 setup(
     name='cclint',
-    version='0.1',
+    version='0.2',
     description="An enhanced version of the Goggle's cpplint tool",
     author='Olli Wang',
     author_email='olliwang@ollix.com',
