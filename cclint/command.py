@@ -109,11 +109,15 @@ def parse_arguments():
     # exclude directories.
     filenames = list()
     for filename in cpplint.ParseArguments(cpplint_args):
-        if (os.path.isdir(filename) and \
-            os.path.relpath(filename) in options['excludedirs']) or \
-           (os.path.isfile(filename) and \
-            os.path.dirname(filename) in options['excludedirs']):
+        # Skips the file if it's in a exclude directory.
+        is_excluded = False
+        for exclude_dir in options['excludedirs']:
+            if (filename.startswith(exclude_dir)):
+                is_excluded = True
+                break
+        if is_excluded:
             continue
+
         filenames.append(filename)
 
     return options, filenames
