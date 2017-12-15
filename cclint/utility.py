@@ -40,9 +40,11 @@ import cpplint
 # properly.
 colorama.init()
 
+_valid_cpp_extensions = cpplint.GetAllExtensions()
+
 
 def expand_directory(dirname, filenames=None, recursive=False,
-                     excludedirs=None):
+                     exclude_dirs=None, exclude_paths=None):
     """Searches files with matched extensions within a directory.
 
     Args:
@@ -58,20 +60,23 @@ def expand_directory(dirname, filenames=None, recursive=False,
     """
 
     # pylint: disable=protected-access
-    if excludedirs is not None and dirname in excludedirs:
+    if exclude_dirs is not None and dirname in exclude_dirs:
         return list()
 
     if filenames is None:
         filenames = list()
+    if exclude_paths is None:
+        exclude_paths = list()
 
     for item in os.listdir(dirname):
         filename = os.path.join(dirname, item)
-
         if os.path.isdir(filename):
             if recursive:
-                expand_directory(filename, filenames, True, excludedirs)
+                expand_directory(filename, filenames, True, exclude_dirs,
+                                 exclude_paths)
         elif os.path.isfile(filename) and \
-             os.path.splitext(item)[1][1:] in cpplint._valid_extensions:
+             os.path.splitext(item)[1][1:] in _valid_cpp_extensions and \
+             os.path.abspath(filename) not in exclude_paths:
             filenames.append(filename)
 
     return filenames

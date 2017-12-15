@@ -158,6 +158,8 @@ def execute_from_command_line():
     update_cpplint_usage()
     options, cpplint_filenames = parse_arguments()
 
+    exclude_paths = [os.path.abspath(f) for f in cpplint._excludes]
+
     # Determines the list of filenames to process.
     if options['expanddir'] == 'no':
         filenames = cpplint_filenames
@@ -170,10 +172,11 @@ def execute_from_command_line():
             if os.path.isfile(filename):
                 filenames.append(filename)
             elif os.path.isdir(filename):
-                expanded_filenames = expand_directory(
-                    filename,
-                    recursive=recursive,
-                    excludedirs=options['excludedirs'])
+                expanded_filenames = expand_directory(filename,
+                                                      None,
+                                                      recursive,
+                                                      options['excludedirs'],
+                                                      exclude_paths)
                 filenames.extend(expanded_filenames)
 
     # Prints the cclint's header message.
