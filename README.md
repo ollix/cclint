@@ -20,7 +20,7 @@ __cclint__ preserves all __cpplint__'s capabilities with a few extra features:
     extensions within specified directories. It also includes an option to add
     files within subdirectories recursively.
 
-##Requirements
+## Requirements
 
 * Python 2.7 or later
 
