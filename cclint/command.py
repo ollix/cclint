@@ -158,7 +158,7 @@ def execute_from_command_line():
     update_cpplint_usage()
     options, cpplint_filenames = parse_arguments()
 
-    exclude_paths = [os.path.abspath(f) for f in cpplint._excludes]
+    exclude_paths = [os.path.abspath(f) for f in cpplint._excludes or []]
 
     # Determines the list of filenames to process.
     if options['expanddir'] == 'no':
